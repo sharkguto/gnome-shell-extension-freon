@@ -1,24 +1,22 @@
 // Provide sensor data from liquidctl.
+import GLib from "gi://GLib";
 
-const GLib = imports.gi.GLib;
+import CommandLineUtil from "./commandLineUtil.js";
 
-const Me = imports.misc.extensionUtils.getCurrentExtension();
-const commandLineUtil = Me.imports.commandLineUtil;
-
-var LiquidctlUtil = class extends commandLineUtil.CommandLineUtil {
+export default class LiquidctlUtil extends CommandLineUtil {
     constructor() {
         super();
-        const path = GLib.find_program_in_path('liquidctl');
-        this._argv = path ? [path, 'status', '--json'] : null;
+        const path = GLib.find_program_in_path("liquidctl");
+        this._argv = path ? [path, "status", "--json"] : null;
     }
 
     // Avoid processing the data more than once.
     execute(callback) {
         super.execute(() => {
             try {
-                const output = this._output.join('');
-                if (output == '')
-                    throw 'no data (liquidctl probably exited with an error)';
+                const output = this._output.join("");
+                if (output == "")
+                    throw "no data (liquidctl probably exited with an error)";
 
                 let temp = [];
                 let rpm = [];
@@ -31,32 +29,38 @@ var LiquidctlUtil = class extends commandLineUtil.CommandLineUtil {
                     // use a shorter device name to reduce visual noise:
                     // - omit manufacturer name
                     // - omit details in parenthesis
-                    const shortDevice = device.description.replace(/(^.+? )|( \(.+)/g, '');
+                    const shortDevice = device.description.replace(
+                        /(^.+? )|( \(.+)/g,
+                        ""
+                    );
 
                     for (const item of device.status) {
                         switch (item.unit) {
-                        case '°C':
-                            dest = temp;
-                            type = 'temp';
-                            break;
-                        case 'rpm':
-                            dest = rpm;
-                            type = 'rpm';
-                            break;
-                        case 'V':
-                            dest = volt;
-                            type = 'volt';
-                            break;
-                        default:
-                            continue;
+                            case "°C":
+                                dest = temp;
+                                type = "temp";
+                                break;
+                            case "rpm":
+                                dest = rpm;
+                                type = "rpm";
+                                break;
+                            case "V":
+                                dest = volt;
+                                type = "volt";
+                                break;
+                            default:
+                                continue;
                         }
 
                         // use a shorter sensor name to reduce visual noise:
                         // - omit temperature|speed|voltage suffix
-                        const shortKey = item.key.replace(/ (temperature|speed|voltage)/, '');
+                        const shortKey = item.key.replace(
+                            / (temperature|speed|voltage)/,
+                            ""
+                        );
 
                         const feature = {
-                            label: shortDevice + ' ' + shortKey,
+                            label: shortDevice + " " + shortKey,
                             [type]: item.value,
                         };
                         dest.push(feature);
@@ -71,7 +75,7 @@ var LiquidctlUtil = class extends commandLineUtil.CommandLineUtil {
                 this._temp = null;
                 this._rpm = null;
                 this._volt = null;
-                global.log('failed to process data from liquidctl: ' + e.toString());
+                logError(e, "liquidctl");
             }
         });
     }
@@ -87,4 +91,4 @@ var LiquidctlUtil = class extends commandLineUtil.CommandLineUtil {
     get volt() {
         return this._volt || [];
     }
-};
+}

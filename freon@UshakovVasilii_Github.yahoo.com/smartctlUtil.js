@@ -1,50 +1,55 @@
-const GLib = imports.gi.GLib;
-
-const Me = imports.misc.extensionUtils.getCurrentExtension();
+import GLib from "gi://GLib";
 const ByteArray = imports.byteArray;
-function getSmartData (argv){
-    const smartctl = GLib.find_program_in_path('smartctl')
-    return JSON.parse(ByteArray.toString( GLib.spawn_command_line_sync(`'${smartctl}' ${argv} -j`)[1] ))
+
+function getSmartData(argv) {
+    const smartctl = GLib.find_program_in_path("smartctl");
+    return JSON.parse(
+        ByteArray.toString(
+            GLib.spawn_command_line_sync(`'${smartctl}' ${argv} -j`)[1]
+        )
+    );
 }
 
-var SmartctlUtil  = class {
+export default class SmartctlUtil {
     constructor(callback) {
         this._smartDevices = [];
         try {
-            this._smartDevices = getSmartData("--scan")["devices"]
+            this._smartDevices = getSmartData("--scan")["devices"];
         } catch (e) {
-            global.log('[FREON] Unable to find smart devices: ' + e);
+            logError(e, "[FREON] Unable to find smart devices: ");
         }
         this._updated = true;
     }
 
-    get available(){
+    get available() {
         return this._smartDevices.length > 0;
     }
 
-    get updated (){
-       return this._updated;
+    get updated() {
+        return this._updated;
     }
 
-    set updated (updated){
+    set updated(updated) {
         this._updated = updated;
     }
 
     get temp() {
-        return this._smartDevices.map(device => {
-            const info = getSmartData(`--info ${device["name"]}`);
-            if (info["smartctl"]["exit_status"] != 0)
-                return null;
+        return this._smartDevices
+            .map((device) => {
+                const info = getSmartData(`--info ${device["name"]}`);
+                if (info["smartctl"]["exit_status"] != 0) return null;
 
-            const attributes = getSmartData(`--attributes ${device["name"]}`);
-            if (attributes["smartctl"]["exit_status"] != 0)
-                return null;
+                const attributes = getSmartData(
+                    `--attributes ${device["name"]}`
+                );
+                if (attributes["smartctl"]["exit_status"] != 0) return null;
 
-            return {
-                label: info["model_name"],
-                temp: parseFloat(attributes.temperature.current)
-            }
-        }).filter(entry => entry != null);
+                return {
+                    label: info["model_name"],
+                    temp: parseFloat(attributes.temperature.current),
+                };
+            })
+            .filter((entry) => entry != null);
     }
 
     destroy(callback) {
@@ -54,5 +59,4 @@ var SmartctlUtil  = class {
     execute(callback) {
         this._updated = true;
     }
-
-};
+}

@@ -1,32 +1,32 @@
-const GLib = imports.gi.GLib;
+import GLib from "gi://GLib";
 
-const Me = imports.misc.extensionUtils.getCurrentExtension();
-
-function getNvmeData (argv){
-    const nvme = GLib.find_program_in_path('nvme')
-    return JSON.parse(GLib.spawn_command_line_sync(`${nvme} ${argv} -o json`)[1].toString())
+function getNvmeData(argv) {
+    const nvme = GLib.find_program_in_path("nvme");
+    return JSON.parse(
+        GLib.spawn_command_line_sync(`${nvme} ${argv} -o json`)[1].toString()
+    );
 }
 
-var NvmecliUtil  = class {
+export default class NvmecliUtil {
     constructor(callback) {
         this._nvmeDevices = [];
         try {
-            this._nvmeDevices = getNvmeData("list")["Devices"]
+            this._nvmeDevices = getNvmeData("list")["Devices"];
         } catch (e) {
-            global.log('[FREON] Unable to find nvme devices: ' + e);
+            logError(e, "[FREON] Unable to find nvme devices: ");
         }
         this._updated = true;
     }
 
-    get available(){
+    get available() {
         return this._nvmeDevices.length > 0;
     }
 
-    get updated (){
-       return this._updated;
+    get updated() {
+        return this._updated;
     }
 
-    set updated (updated){
+    set updated(updated) {
         this._updated = updated;
     }
 
@@ -34,19 +34,24 @@ var NvmecliUtil  = class {
         let sensors = [];
         for (let device of this._nvmeDevices) {
             var smart_log = getNvmeData(`smart-log ${device["DevicePath"]}`);
-            if( smart_log.hasOwnProperty('temperature_sensor_2') ){
-                sensors.push({ label: device["ModelNumber"] + " S1",
-                               temp: parseFloat(smart_log.temperature_sensor_1) - 273.15 });
-                sensors.push({ label: device["ModelNumber"] + " S2",
-                               temp: parseFloat(smart_log.temperature_sensor_2) - 273.15 });
-                }
-            else{
-                 sensors.push({ label: device["ModelNumber"],
-                                temp: parseFloat(smart_log.temperature) - 273.15 });
+            if (smart_log.hasOwnProperty("temperature_sensor_2")) {
+                sensors.push({
+                    label: device["ModelNumber"] + " S1",
+                    temp: parseFloat(smart_log.temperature_sensor_1) - 273.15,
+                });
+                sensors.push({
+                    label: device["ModelNumber"] + " S2",
+                    temp: parseFloat(smart_log.temperature_sensor_2) - 273.15,
+                });
+            } else {
+                sensors.push({
+                    label: device["ModelNumber"],
+                    temp: parseFloat(smart_log.temperature) - 273.15,
+                });
             }
-       }
-       return sensors;
-   }
+        }
+        return sensors;
+    }
 
     destroy(callback) {
         this._nvmeDevices = [];
@@ -55,5 +60,4 @@ var NvmecliUtil  = class {
     execute(callback) {
         this._updated = true;
     }
-
-};
+}
